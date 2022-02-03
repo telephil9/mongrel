@@ -1,0 +1,318 @@
+#include <u.h>
+#include <libc.h>
+#include <bio.h>
+#include <draw.h>
+#include <mouse.h>
+#include <keyboard.h>
+#include <thread.h>
+#include <plumb.h>
+#include "theme.h"
+#include "a.h"
+#include "kbd.h"
+
+enum
+{
+	Padding = 4,
+};
+
+enum
+{
+	Emouse,
+	Eresize,
+	Ekeyboard,
+	Eseemail,
+	Eshowmesg,
+	Eselmesg,
+};
+
+enum
+{
+	BACK,
+	TEXT,
+	BORD,
+	NCOLS,
+};
+
+Mousectl *mctl;
+Kbdctl *kctl;
+Channel *showc;
+Channel *selc;
+Channel *eventc;
+Mailbox *mboxes[16];
+int nmboxes;
+Mailbox *mbox;
+static Image *cols[NCOLS];
+Rectangle headr;
+Rectangle indexr;
+Rectangle pagerr;
+int collapsed = 0;
+
+void
+drawheader(void)
+{
+	char buf[255] = {0};
+	Point p;
+
+	draw(screen, headr, cols[BACK], nil, ZP);
+	p = headr.min;
+	p.x += Padding;
+	p.y += Padding / 2;
+	if(mbox->unseen > 0)
+		snprint(buf, sizeof buf, "» %s [total:%d - new:%d]", mbox->name, mbox->count, mbox->unseen);
+	else
+		snprint(buf, sizeof buf, "» %s [total:%d]", mbox->name, mbox->count);
+	string(screen, p, cols[TEXT], ZP, font, buf);
+	line(screen, Pt(headr.min.x, headr.max.y), headr.max, 0, 0, 0, cols[BORD], ZP);
+}
+
+void
+redraw(void)
+{
+	draw(screen, screen->r, cols[BACK], nil, ZP);
+	drawheader();
+	indexdraw();
+	if(collapsed){
+		line(screen, Pt(indexr.min.x, indexr.max.y), indexr.max, 0, 0, 0, cols[BORD], ZP);
+		pagerdraw();
+	}
+	flushimage(display, 1);
+}
+
+void
+resize(void)
+{
+	headr = screen->r;
+	headr.max.y = headr.min.y+Padding+font->height;
+	indexr = screen->r;
+	indexr.min.y = headr.max.y + 1;
+	indexr = indexresize(indexr, collapsed);
+	if(collapsed){
+		pagerr = screen->r;
+		pagerr.min.y = indexr.max.y + 1;
+		pagerresize(pagerr);
+	}
+	redraw();
+}
+
+void
+mouse(Mouse m)
+{
+	indexmouse(m);
+	pagermouse(m);
+}
+
+void
+key(Key k)
+{
+	if(k.k == Kdel)
+		threadexitsall(nil);
+	else if(k.k == 'q'){
+		if(collapsed){
+			collapsed = 0;
+			resize();
+		}else
+			threadexitsall(nil);
+	}else if(k.mods == Malt){
+		if(collapsed)
+			pagerkey(k.k);
+	}else
+		indexkey(k.k);
+}
+
+void
+seemail(Mailevent e)
+{
+	Mailbox *mb;
+	char *s;
+	int i;
+
+	for(mb = nil, i = 0; i < nmboxes; i++){
+		if(strncmp(mboxes[i]->path, e.path, strlen(mboxes[i]->path))==0){
+			mb = mboxes[i];
+			break;
+		}
+	}
+	if(mb==nil)
+		return;
+	s = e.path;
+	switch(e.type){
+		case Enew:
+			mboxadd(mb, s);
+			if(mb==mbox){
+				indexresetsel();
+				redraw();
+			}
+			break;
+		case Edelete:
+			mboxdel(mb, s);
+			if(mb==mbox){
+				indexresetsel();
+				redraw();
+			}
+			break;
+		case Emodify:
+			if(mboxmod(mb, s) && mb==mbox)
+				redraw();
+			break;
+	}
+	free(s);
+}
+
+void
+init(Channel *selc)
+{
+	Theme *theme;
+	Rectangle r;
+
+	theme = loadtheme();
+	if(theme != nil){
+		cols[BACK] = theme->back;
+		cols[TEXT] = theme->text;
+		cols[BORD] = theme->title;
+	}else{
+		r = Rect(0, 0, 1, 1);
+		cols[BACK] = allocimage(display, r, screen->chan, 1, 0xFFFFFFFF);
+		cols[TEXT] = allocimage(display, r, screen->chan, 1, 0x000000FF);
+		cols[BORD] = allocimage(display, r, screen->chan, 1, DGreygreen);
+		/*
+		cols[BACK] = allocimage(display, r, screen->chan, 1, 0x282828FF);
+		cols[TEXT] = allocimage(display, r, screen->chan, 1, 0xA89984FF);
+		cols[BORD] = allocimage(display, r, screen->chan, 1, 0x98971AFF);
+		*/
+	}
+	indexinit(showc, selc, theme);
+	pagerinit(mctl, theme);
+}
+
+void
+switchmbox(int n)
+{
+	if(mbox==mboxes[n])
+		return;
+	mbox = mboxes[n];
+	indexswitch(mbox);
+}
+
+void
+plumbmsg(Message *m)
+{
+	int fd;
+
+	fd = plumbopen("send", OWRITE|OCEXEC);
+	if(fd<0)
+		return;
+	plumbsendtext(fd, "mongrel", nil, nil, m->path);
+	close(fd);
+}
+
+void
+showmsg(Message *m)
+{
+	if(collapsed == 0){
+		collapsed = 1;
+		resize();
+	}
+	pagershow(m);
+	if(mesgmarkseen(mbox, m))
+		redraw();
+}
+
+void
+selchanged(Message *m)
+{
+	if(collapsed == 0)
+		return;
+	showmsg(m);
+}
+
+
+void
+usage(void)
+{
+	fprint(2, "usage: %s [-m maildir]\n", argv0);
+	exits("usage");
+}
+
+void
+threadmain(int argc, char *argv[])
+{
+	Mouse m;
+	Key k;
+	Mailevent e;
+	Message *msg;
+	Alt alts[] = 
+	{
+		{ nil, &m,   CHANRCV },
+		{ nil, nil,  CHANRCV },
+		{ nil, &k,   CHANRCV },
+		{ nil, &e,   CHANRCV },
+		{ nil, &msg, CHANRCV },
+		{ nil, &msg, CHANRCV },
+		{ nil, nil,  CHANEND },
+	};
+	char *s;
+
+	nmboxes = 0;
+	ARGBEGIN{
+	case 'm':
+		s = EARGF(usage());
+		mboxes[nmboxes++] = loadmbox(s);
+		break;
+	default:
+		fprint(2, "unknown flag '%c'\n", ARGC());
+		usage();
+	}ARGEND
+	if(nmboxes==0){
+		fprint(2, "no maildir specified\n");
+		usage();
+	}
+	tmfmtinstall();
+	if(initdraw(nil, nil, "mongrel")<0)
+		sysfatal("initdraw: %r");
+	display->locking = 0;
+	if((mctl = initmouse(nil, screen)) == nil)
+		sysfatal("initmouse: %r");
+	if((kctl = initkbd()) == nil)
+		sysfatal("initkbd: %r");
+	if((eventc = chancreate(sizeof(Mailevent), 0))==nil)
+		sysfatal("chancreate: %r");
+	if((showc = chancreate(sizeof(Message*), 1))==nil)
+		sysfatal("chancreate: %r");
+	if((selc = chancreate(sizeof(Message*), 1))==nil)
+		sysfatal("chancreate: %r");
+	alts[0].c = mctl->c;
+	alts[1].c = mctl->resizec;
+	alts[2].c = kctl->c;
+	alts[3].c = eventc;
+	alts[4].c = showc;
+	alts[5].c = selc;
+	proccreate(seemailproc, eventc, 8192);
+	init(selc);
+	switchmbox(0);
+	resize();
+	for(;;){
+		switch(alt(alts)){
+		case Emouse:
+			mouse(m);
+			break;
+		case Eresize:
+			if(getwindow(display, Refnone)<0)
+				sysfatal("cannot reattach: %r");
+			resize();
+			break;
+		case Ekeyboard:
+			key(k);
+			break;
+		case Eseemail:
+			seemail(e);
+			break;
+		case Eshowmesg:
+			showmsg(msg);
+			break;
+		case Eselmesg:
+			//plumbmsg(msg);
+			selchanged(msg);
+			break;
+		}
+	}
+}
