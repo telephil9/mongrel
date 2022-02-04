@@ -286,7 +286,7 @@ indexat(Point p)
 void
 indexmouse(Mouse m)
 {
-	int sl;
+	int n;
 
 	if(!ptinrect(m.xy, viewr))
 		return;
@@ -298,11 +298,22 @@ indexmouse(Mouse m)
 		}else if(m.buttons & 4){
 			select(indexat(m.xy), showc);
 		}else if(m.buttons & 8){
-			sl = mousescrollsize(nlines);
-			scroll(-sl);
+			n = mousescrollsize(nlines);
+			scroll(-n);
 		}else if(m.buttons & 16){
-			sl = mousescrollsize(nlines);
-			scroll(sl);
+			n = mousescrollsize(nlines);
+			scroll(n);
+		}
+	}else if(ptinrect(m.xy, scrollr)){
+		if(m.buttons & 1){
+			n = (m.xy.y - scrollr.min.y) / lineh;
+			scroll(-n);
+		}else if(m.buttons & 2){
+			offset = (m.xy.y - scrollr.min.y) * mbox->list->nelts / Dy(scrollr);
+			indexdrawsync();
+		}else if(m.buttons & 4){
+			n = (m.xy.y - scrollr.min.y) / lineh;
+			scroll(n);
 		}
 	}
 }
