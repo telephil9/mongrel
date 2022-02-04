@@ -4,6 +4,7 @@
 #include <mouse.h>
 #include <keyboard.h>
 #include <thread.h>
+#include <plumb.h>
 #include "theme.h"
 #include "a.h"
 
@@ -27,17 +28,13 @@ enum
 
 enum
 {
-	Mreply,
-	Mreplyall,
-	Mforward,
+	Mplumb,
 	Mdelete,
 };
 
 char *menustr[] =
 {
-	"reply",
-	"reply all",
-	"forward",
+	"plumb",
 	"delete",
 	nil
 };
@@ -47,6 +44,7 @@ Menu menu =
 	menustr
 };
 
+Mousectl *mctl;
 Channel *showc;
 Channel *selc;
 Mailbox *mbox;
@@ -220,12 +218,13 @@ indexresize(Rectangle r, int collapsed)
 }
 
 void
-indexinit(Channel *c0, Channel *c1, Theme *theme)
+indexinit(Mousectl *mc, Channel *c0, Channel *c1, Theme *theme)
 {
 	Rectangle r;
 
 	sel = 0;
 	offset = 0;
+	mctl = mc;
 	showc = c0;
 	selc = c1;
 	if(theme != nil){
@@ -297,6 +296,38 @@ indexat(Point p)
 	return offset + (p.y-listr.min.y)/lineh;
 }
 
+static
+void
+plumbmsg(Message *m)
+{
+	int fd;
+
+	fd = plumbopen("send", OWRITE|OCEXEC);
+	if(fd<0)
+		return;
+	plumbsendtext(fd, "mongrel", nil, nil, m->path);
+	close(fd);	
+}
+
+static
+void
+menu2hit(Mouse m)
+{
+	int n;
+
+	n = menuhit(2, mctl, &menu, nil);
+	switch(n){
+	case Mplumb:
+		select(indexat(m.xy), selc);
+		plumbmsg(messageat(sel));
+		break;
+	case Mdelete:
+		select(indexat(m.xy), selc);
+		mesgdel(mbox, messageat(sel));
+		break;
+	}
+}
+
 void
 indexmouse(Mouse m)
 {
@@ -308,7 +339,7 @@ indexmouse(Mouse m)
 		if(m.buttons & 1){
 			select(indexat(m.xy), selc);
 		}else if(m.buttons & 2){
-			/* TODO: menu */
+			menu2hit(m);
 		}else if(m.buttons & 4){
 			n = indexat(m.xy);
 			if(n != sel)

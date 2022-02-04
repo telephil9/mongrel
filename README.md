@@ -15,13 +15,17 @@ If available, mongrel will use your current [theme](https://ftrv.se/14).
 ## Usage
 mongrel has two components:
 - the index which shows the list of messages
-- the pager which shows an individual mail
+- the pager which shows the content of the mail currently selected in the index.
 
-Navigation in the index is done using the mouse, the arrow keys, page up/down, home and end. A left click on a given message will select it. Right-clicking or pressing `enter` will display the message content (in this case the pager will open if not displayed already).
-Scrolling in the pager can be achieved with either the mouse or with a combination of pressing `alt` and the arrow keys or page up/down.  
-The pager displays any attachments the message may have below the message headers. Right-clicking an individual attachment will send it to the plumber.  
-`q` will hide the pager if it is open or quit mongrel if in the index.  
-`Del` exit mongrel.
+In the index, navigation is done using either the scrollbar or the mouse wheel. Selection can be changed using the arrow keys, page up, page down, home and end. A left click on a message will select it and display its content if the pager is open while a right click (or pressing `Enter`) will open the pager first and then display the message content. A middle click will open a menu with additional actions:
+- plumb sends the message to the plumber which by default opens the message in nedmail (useful for answering/forwarding the message).
+- delete deletes the message
+
+In the pager, navigation is done using either the scrollbar or the mouse wheel. It is also possible to use keyboard navigation by pressing `Alt` in addition to the arrow keys, page up, page down, home and end.
+
+Other shortcuts:
+- `q` will hide the pager if it is open or quit mongrel if in the index.  
+- `Del` exit mongrel.
 
 ## License
 MIT

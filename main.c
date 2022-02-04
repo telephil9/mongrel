@@ -181,7 +181,7 @@ init(Channel *selc)
 		cols[BORD] = allocimage(display, r, screen->chan, 1, 0x98971AFF);
 		*/
 	}
-	indexinit(showc, selc, theme);
+	indexinit(mctl, showc, selc, theme);
 	pagerinit(mctl, theme);
 }
 

@@ -78,7 +78,7 @@ int mlins(Mlist*, usize, Message*);
 Message* mldel(Mlist*, usize);
 
 /* index */
-void indexinit(Channel*, Channel*, Theme*);
+void indexinit(Mousectl*, Channel*, Channel*, Theme*);
 Rectangle indexresize(Rectangle, int);
 void indexdraw(void);
 void indexmouse(Mouse);
