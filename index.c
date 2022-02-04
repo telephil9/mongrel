@@ -73,6 +73,18 @@ indexswitch(Mailbox *mb)
 	mbox = mb;
 }
 
+void
+ensureselvisible(void)
+{
+	int n;
+
+	if(sel > offset && sel < offset + nlines)
+		return;
+	offset = nlines*(sel/nlines);
+	n = mbox->list->nelts;
+	if(offset + n%nlines >= n)
+		offset = n - n%nlines;
+}
 
 Message*
 messageat(int index)
@@ -189,6 +201,7 @@ indexresize(Rectangle r, int collapsed)
 	listr.min.x += Scrollwidth + Scrollgap;
 	listr.max.x -= Padding;
 	nlines = Dy(viewr) / lineh;
+	ensureselvisible();
 	return viewr;
 }
 
@@ -244,8 +257,6 @@ scroll(int Δ)
 void
 select(int newsel, Channel *c)
 {
-	int n;
-
 	if(newsel < 0)
 		newsel = 0;
 	if(newsel >= mbox->count)
@@ -254,10 +265,7 @@ select(int newsel, Channel *c)
 		return;
 	if(newsel < offset || newsel >= offset + nlines){
 		sel = newsel;
-		offset = nlines*(sel/nlines);
-		n = mbox->list->nelts;
-		if(offset + n%nlines >= n)
-			offset = n - n%nlines;
+		ensureselvisible();
 		indexdraw();
 	}else{
 		drawmessage(sel, 0);
