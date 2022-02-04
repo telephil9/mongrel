@@ -137,21 +137,22 @@ seemail(Mailevent e)
 	s = e.path;
 	switch(e.type){
 		case Enew:
-			mboxadd(mb, s);
+			i = mboxadd(mb, s);
 			if(mb==mbox){
-				indexresetsel();
+				indexadded(i);
 				redraw();
 			}
 			break;
 		case Edelete:
-			mboxdel(mb, s);
+			i = mboxdel(mb, s);
 			if(mb==mbox){
-				indexresetsel();
+				indexremoved(i);
 				redraw();
 			}
 			break;
 		case Emodify:
-			if(mboxmod(mb, s) && mb==mbox)
+			i = mboxmod(mb, s);
+			if(i >= 0 && mb==mbox)
 				redraw();
 			break;
 	}

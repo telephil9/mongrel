@@ -119,7 +119,7 @@ loadmessage(char *path)
 	else
 		m->flags = readflags(path);
 	if(n >= 20 && f[19] != nil && strlen(f[19]) > 0)
-		m->sender = f[19];
+		m->sender = strdup(f[19]);
 	else
 		m->sender = strdup(m->from);
 	m->time = time(nil);
@@ -220,7 +220,7 @@ loadmbox(char *name)
 	return mb;
 }
 
-void
+int
 mboxadd(Mailbox *mbox, char *path)
 {
 	Message *m;
@@ -230,7 +230,7 @@ mboxadd(Mailbox *mbox, char *path)
 	for(i = 0; i < mbox->list->nelts; i++){
 		m = mbox->list->elts[i];
 		if(m->id == id)
-			return;
+			return -1;
 	}
 	m = loadmessage(path);
 	m->id = id;
@@ -238,6 +238,7 @@ mboxadd(Mailbox *mbox, char *path)
 		++mbox->unseen;
 	mladd(mbox->list, m);
 	++mbox->count;
+	return mbox->count - 1;
 }
 
 int
@@ -254,7 +255,7 @@ mboxmod(Mailbox *mbox, char *path)
 	}
 	if(m==nil){
 		fprint(2, "could not find mail '%s'\n", path);
-		return 0;
+		return -1;
 	}
 	f = readflags(path);
 	if(m->flags != f){
@@ -263,12 +264,12 @@ mboxmod(Mailbox *mbox, char *path)
 		else if((m->flags & Fseen) == 0 && (f & Fseen) != 0)
 			--mbox->unseen;
 		m->flags = f;
-		return 1;
+		return i;
 	}
-	return 0;
+	return -1;
 }
 
-void
+int
 mboxdel(Mailbox *mbox, char *path)
 {
 	Message *m;
@@ -278,19 +279,21 @@ mboxdel(Mailbox *mbox, char *path)
 	for(i = 0; i < mbox->list->nelts; i++){
 		m = mbox->list->elts[i];
 		if(strcmp(path, m->path)==0){
+			if((m->flags & Fseen) == 0)
+				--mbox->unseen;
 			mldel(mbox->list, i);
 			free(m->path);
 			free(m->info);
 			free(m->sender);
 			free(m);
 			--mbox->count;
-			return;
+			return i;
 		}
 	}
 	if(m==nil){
 		fprint(2, "could not find mail '%s'\n", path);
-		return;
 	}
+	return -1;
 }
 
 void

@@ -66,9 +66,9 @@ enum
 Mailbox* loadmbox(char *name);
 void mesgloadbody(Message*);
 int mesgmarkseen(Mailbox*, Message*);
-void mboxadd(Mailbox *mbox, char *path);
-int  mboxmod(Mailbox *mbox, char *path);
-void mboxdel(Mailbox *mbox, char *path);
+int mboxadd(Mailbox *mbox, char *path);
+int mboxmod(Mailbox *mbox, char *path);
+int mboxdel(Mailbox *mbox, char *path);
 void mesgdel(Mailbox *mbox, Message *m);
 void seemailproc(void *v);
 
@@ -83,7 +83,8 @@ Rectangle indexresize(Rectangle, int);
 void indexdraw(void);
 void indexmouse(Mouse);
 void indexkey(Rune);
-void indexresetsel(void);
+void indexadded(int);
+void indexremoved(int);
 void indexswitch(Mailbox*);
 
 /* pager */

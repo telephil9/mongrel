@@ -59,17 +59,38 @@ static int offset;
 static int sel;
 static int lineh;
 
-void
-indexresetsel(void)
+Message*
+messageat(int index)
 {
-	sel = 0;
-	offset = 0;
+	index = mbox->count - index - 1;
+	return mbox->list->elts[index];
+}
+
+void
+indexadded(int index)
+{
+	index = mbox->count - index - 1;
+	if(sel <= index)
+		++sel;
+}
+
+void
+indexremoved(int index)
+{
+	index = mbox->count - index - 1;
+	if(sel >= index){
+		--sel;
+		if(sel < 0)
+			sel = 0;
+		sendp(selc, messageat(sel));
+	}
 }
 
 void
 indexswitch(Mailbox *mb)
 {
-	indexresetsel();
+	sel = 0;
+	offset = 0;
 	mbox = mb;
 }
 
@@ -84,13 +105,6 @@ ensureselvisible(void)
 	n = mbox->list->nelts;
 	if(offset + n%nlines >= n)
 		offset = n - n%nlines;
-}
-
-Message*
-messageat(int index)
-{
-	index = mbox->count - index - 1;
-	return mbox->list->elts[index];
 }
 
 Rectangle
