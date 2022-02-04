@@ -296,7 +296,11 @@ indexmouse(Mouse m)
 		}else if(m.buttons & 2){
 			/* TODO: menu */
 		}else if(m.buttons & 4){
-			select(indexat(m.xy), showc);
+			n = indexat(m.xy);
+			if(n != sel)
+				select(indexat(m.xy), showc);
+			else
+				sendp(showc, messageat(sel));
 		}else if(m.buttons & 8){
 			n = mousescrollsize(nlines);
 			scroll(-n);
