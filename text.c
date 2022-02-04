@@ -104,6 +104,9 @@ textinit(Text *t, Image *b, Rectangle r, Font *f, Image *cols[NCOLS])
 void
 textset(Text *t, char *data, usize ndata)
 {
+	t->s0 = -1;
+	t->s1 = -1;
+	t->offset = 0;
 	t->data = data;
 	t->ndata = ndata;
 	computelines(t);
