@@ -81,25 +81,40 @@ messageat(int index)
 	return mbox->list->elts[index];
 }
 
+Rectangle
+messagerect(int index)
+{
+	Point p, q;
+	int n;
+
+	n = index - offset;
+	p = addpt(listr.min, Pt(Padding, n*lineh + Padding));
+	q = Pt(listr.max.x, p.y + lineh);
+	return Rpt(p, q);
+}
+
 void
-drawmessage(Message *m, Point p, int selected)
+drawmessage(int index, int selected)
 {
 	const Rune *ellipsis = L"…";
+	Message *m;
 	Image *fg, *bg;
-	char *s, buf[9];
-	char n, r;
+	char *s, buf[9], n, r;
 	Tm t;
 	Rune rn;
 	int i, w;
-	Point pe;
+	Rectangle lr;
+	Point p, pe;
 
-	bg = cols[HIGH];
+	lr = messagerect(index);
+	bg = selected ? cols[HIGH] : cols[BACK];
 	fg = cols[TEXT];
-	if(selected)
-		draw(screen, Rect(p.x, p.y-Padding/2, p.x+Dx(viewr), p.y+lineh-Padding/2), bg, nil, ZP);
+	draw(screen, rectsubpt(lr, Pt(0, Padding/2)), bg, nil, ZP);
+	m = messageat(index);
 	n = m->flags&Fseen?' ':'N';
 	r = m->flags&Fanswered ? 'R':' ';
 	snprint(buf, sizeof buf, "[%c%c] ", n, r);
+	p = lr.min;
 	p = string(screen, p, fg, ZP, font, buf);
 	tmtime(&t, m->time, nil);
 	snprint(buf, sizeof buf, "%τ", tmfmt(&t, "DD/MM/YY"));
@@ -136,7 +151,6 @@ void
 indexdraw(void)
 {
 	Rectangle scrposr;
-	Point p;
 	int i, h, y;
 
 	draw(screen, viewr, cols[BACK], nil, ZP);
@@ -147,12 +161,10 @@ indexdraw(void)
 		h = Scrollminh;
 	scrposr = Rpt(addpt(scrollr.min, Pt(0,y)), addpt(scrollr.min, Pt(Dx(scrollr)-1, y+h)));
 	draw(screen, scrposr, cols[BACK], nil, ZP);
-	p = addpt(listr.min, Pt(Padding, Padding));
 	for(i = offset; i < offset + nlines; i++){
 		if(i >= mbox->list->nelts)
 			break;
-		drawmessage(messageat(i), p, i == sel);
-		p.y += lineh;
+		drawmessage(i, i == sel);
 	}
 }
 
@@ -210,7 +222,7 @@ indexinit(Channel *c0, Channel *c1, Theme *theme)
 }
 
 void
-scroll(int Δ, int ssel)
+scroll(int Δ)
 {
 	int nelts;
 
@@ -226,34 +238,41 @@ scroll(int Δ, int ssel)
 		offset = 0;
 	if(offset + nelts%nlines >= nelts)
 		offset = nelts - nelts%nlines;
-	if(ssel){
-		if(Δ > 0)
-			sel = 0;
-		else
-			sel = nlines - 1;
-	}
 	indexdrawsync();
 }
 
 void
-changesel(int Δ)
-{
-	if(Δ < 0 && sel == 0)
-		return;
-	if(Δ > 0 && sel == mbox->count - 1)
-		return;
-	sel += Δ;
-	indexdrawsync();
-}
-
-void
-setsel(Point p)
+select(int newsel, Channel *c)
 {
 	int n;
 
-	n = (p.y-listr.min.y)/lineh;
-	sel = n+offset;
-	indexdrawsync();
+	if(newsel < 0)
+		newsel = 0;
+	if(newsel >= mbox->count)
+		newsel = mbox->count - 1;
+	if(newsel == sel)
+		return;
+	if(newsel < offset || newsel >= offset + nlines){
+		sel = newsel;
+		offset = nlines*(sel/nlines);
+		n = mbox->list->nelts;
+		if(offset + n%nlines >= n)
+			offset = n - n%nlines;
+		indexdraw();
+	}else{
+		drawmessage(sel, 0);
+		drawmessage(newsel, 1);
+		sel = newsel;
+	}
+	flushimage(display, 1);
+	sendp(c, messageat(sel));
+}
+
+static
+int
+indexat(Point p)
+{
+	return offset + (p.y-listr.min.y)/lineh;
 }
 
 void
@@ -263,75 +282,49 @@ indexmouse(Mouse m)
 
 	if(!ptinrect(m.xy, viewr))
 		return;
-	if(m.buttons & 1){
-		setsel(m.xy);
-		sendp(selc, messageat(sel));
-	}else if(m.buttons & 2){
-		/* TODO: menu */
-	}else if(m.buttons & 4){
-		setsel(m.xy);
-		sendp(showc, messageat(sel));
-	}else if(m.buttons & 8){
-		sl = mousescrollsize(nlines);
-		scroll(-sl, 0);
-	}else if(m.buttons & 16){
-		sl = mousescrollsize(nlines);
-		scroll(sl, 0);
+	if(ptinrect(m.xy, listr)){
+		if(m.buttons & 1){
+			select(indexat(m.xy), selc);
+		}else if(m.buttons & 2){
+			/* TODO: menu */
+		}else if(m.buttons & 4){
+			select(indexat(m.xy), showc);
+		}else if(m.buttons & 8){
+			sl = mousescrollsize(nlines);
+			scroll(-sl);
+		}else if(m.buttons & 16){
+			sl = mousescrollsize(nlines);
+			scroll(sl);
+		}
 	}
 }
+
 
 void
 indexkey(Rune k)
 {
 	switch(k){
-		case Kup:
-			if(sel == offset)
-				scroll(-nlines, 1);
-			else if(sel > offset)
-				changesel(-1);
-			sendp(selc, messageat(sel));
-			break;
-		case Kdown:
-			if(sel < (mbox->count - 1)){
-				if(sel == offset + nlines - 1){
-					sel = offset + nlines;
-					scroll(nlines, 0);
-				}else
-					changesel(1);
-				sendp(selc, messageat(sel));
-			}
-			break;
-		case '\n':
-			sendp(showc, messageat(sel));
-			break;
-		case Kpgup:
-			if(sel > 0){
-				sel -= nlines;
-				if(sel < 0)
-					sel = 0;
-				scroll(-nlines, 0);
-				sendp(selc, messageat(sel));
-			}
-			break;
-		case Kpgdown:
-			if(sel < (mbox->count - 1)){
-				sel += nlines;
-				if(sel >= mbox->count)
-					sel = mbox->count - 1;
-				scroll(nlines, 0);
-				sendp(selc, messageat(sel));
-			}
-			break;
-		case Khome:
-			sel = 0;
-			scroll(-mbox->count, 0);
-			sendp(selc, messageat(sel));
-			break;
-		case Kend:
-			sel = mbox->count - 1;
-			scroll(mbox->count, 0);
-			sendp(selc, messageat(sel));
-			break;
+	case Kup:
+		select(sel - 1, selc);
+		break;
+	case Kdown:
+		select(sel + 1, selc);
+		break;
+	case Kpgup:
+		select(sel - nlines, selc);
+		break;
+	case Kpgdown:
+		select(sel + nlines, selc);
+		break;
+	case Khome:
+		select(0, selc);
+		break;
+	case Kend:
+		select(mbox->count - 1, selc);
+		break;
+	case '\n':
+		sendp(showc, messageat(sel));
+		break;
 	}
 }
 
