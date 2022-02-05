@@ -95,4 +95,5 @@ void pagermouse(Mouse);
 void pagerkey(Rune);
 void pagershow(Message*);
 
+void mesgmenuhit(int, Mouse);
 

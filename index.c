@@ -309,13 +309,12 @@ plumbmsg(Message *m)
 	close(fd);	
 }
 
-static
 void
-menu2hit(Mouse m)
+mesgmenuhit(int but, Mouse m)
 {
 	int n;
 
-	n = menuhit(2, mctl, &menu, nil);
+	n = menuhit(but, mctl, &menu, nil);
 	switch(n){
 	case Mplumb:
 		select(indexat(m.xy), selc);
@@ -339,7 +338,7 @@ indexmouse(Mouse m)
 		if(m.buttons & 1){
 			select(indexat(m.xy), selc);
 		}else if(m.buttons & 2){
-			menu2hit(m);
+			mesgmenuhit(2, m);
 		}else if(m.buttons & 4){
 			n = indexat(m.xy);
 			if(n != sel)
