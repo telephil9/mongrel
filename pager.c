@@ -14,6 +14,27 @@ enum
 	Padding = 4,
 };
 
+typedef struct Handler Handler;
+
+struct Handler
+{
+	char *type;
+	char *fmt;
+	char *dst;
+} handlers[] = {
+	"text/html", "file://%s/body.html", "web",
+	"image/png", "%s/body.png", "image",
+	"image/x-png", "%s/body.png", "image",
+	"image/jpeg", "%s/body.jpg", "image",
+	"image/jpg", "%s/body.jpg", "image",
+	"image/gif", "%s/body.gif", "image",
+	"image/bmp", "%s/body.bmp", "image",
+	"image/tiff", "%s/body.tiff", "image",
+	"image/p9bit", "%s/body", "image",
+	"application/pdf", "%s/body.pdf", "postscript",
+	"application/postscript", "%s/body.ps", "postscript",
+};
+
 static Mousectl *mc;
 static Text text;
 static Rectangle viewr;
@@ -204,7 +225,7 @@ void
 partclick(Point p)
 {
 	Message *m;
-	char *dst, buf[1024] = {0};
+	char buf[1024] = {0};
 	int fd, n;
 
 	fd = plumbopen("send", OWRITE);
@@ -216,17 +237,16 @@ partclick(Point p)
 		return;
 	}
 	m = parts[n];
-	dst = nil;
-	if(strcmp(m->type, "text/html") == 0){
-		snprint(buf, sizeof buf, "file://%s/body.html", m->path);
-		dst = "web";
-	}else if(strncmp(m->type, "image/", 6) == 0){
-		snprint(buf, sizeof buf, "%s/body.%s", m->path, m->type+6);
-		dst = "image";
-	}else{
-		snprint(buf, sizeof buf, "%s/body", m->path);
+	for(n = 0; n < nelem(handlers); n++){
+		if(strcmp(m->type, handlers[n].type) == 0){
+			snprint(buf, sizeof buf, handlers[n].fmt, m->path);
+			plumbsendtext(fd, "mongrel", handlers[n].dst, nil, buf);
+			close(fd);
+			return;
+		}
 	}
-	plumbsendtext(fd, "mongrel", dst, nil, buf);
+	snprint(buf, sizeof buf, "%s/body", m->path);
+	plumbsendtext(fd, "mongrel", nil, nil, buf);
 	close(fd);
 }
 
