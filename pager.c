@@ -146,7 +146,7 @@ drawparts(Point p)
 		if(parts[i]->filename != nil && parts[i]->filename[0] != 0)
 			q = string(screen, q, cols[TEXT], ZP, font, parts[i]->filename);
 		else
-			q = string(screen, q, cols[TEXT], ZP, font, "unnamed");
+			q = string(screen, q, cols[TEXT], ZP, font, "<no description>");
 		q = string(screen, q, cols[BORD], ZP, font, " [");
 		q = string(screen, q, cols[BORD], ZP, font, parts[i]->type);
 		string(screen, q, cols[BORD], ZP, font, "]");
