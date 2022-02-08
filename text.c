@@ -72,9 +72,10 @@ indexat(Text *t, Point p)
 	if(line+1 >= t->nlines)
 		e = t->ndata;
 	else
-		e = t->lines[line+1];
+		e = t->lines[line+1] - 2; /* make sure we exclude the newline */
+	c = 0;
 	x = t->textr.min.x;
-	for(i = s; i <= e; ){
+	for(i = s; i < e; ){
 		c = chartorune(&r, &t->data[i]);
 		if(r == '\t')
 			l = stringwidth(t->font, "    ");
@@ -85,6 +86,8 @@ indexat(Text *t, Point p)
 		i += c;
 		x += l;
 	}
+	if(r == '\n')
+		i -= c;
 	return i;
 }
 
