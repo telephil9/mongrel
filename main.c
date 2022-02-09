@@ -7,8 +7,8 @@
 #include <thread.h>
 #include <plumb.h>
 #include "theme.h"
-#include "a.h"
 #include "kbd.h"
+#include "a.h"
 
 enum
 {
@@ -182,7 +182,7 @@ init(Channel *selc)
 		*/
 	}
 	indexinit(mctl, showc, selc, theme);
-	pagerinit(mctl, theme);
+	pagerinit(mctl, kctl, theme);
 }
 
 void

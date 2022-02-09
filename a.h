@@ -88,7 +88,7 @@ void indexremoved(int);
 void indexswitch(Mailbox*);
 
 /* pager */
-void pagerinit(Mousectl*, Theme*);
+void pagerinit(Mousectl*, Kbdctl*, Theme*);
 void pagerresize(Rectangle);
 void pagerdraw(void);
 void pagermouse(Mouse);
@@ -97,3 +97,4 @@ void pagershow(Message*);
 
 void mesgmenuhit(int, Mouse);
 
+int kbdenter(char *ask, char *buf, int len, Mousectl *mc, Kbdctl *kc, Screen *scr);

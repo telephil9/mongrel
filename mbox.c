@@ -6,6 +6,7 @@
 #include <draw.h>
 #include <mouse.h>
 #include "theme.h"
+#include "kbd.h"
 #include "a.h"
 
 char*

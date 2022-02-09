@@ -6,6 +6,7 @@
 #include <thread.h>
 #include <plumb.h>
 #include "theme.h"
+#include "kbd.h"
 #include "a.h"
 
 enum

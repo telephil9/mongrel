@@ -6,6 +6,7 @@
 #include <thread.h>
 #include <plumb.h>
 #include "theme.h"
+#include "kbd.h"
 #include "a.h"
 #include "w.h"
 
@@ -36,6 +37,7 @@ struct Handler
 };
 
 static Mousectl *mc;
+static Kbdctl *kc;
 static Text text;
 static Rectangle viewr;
 static Rectangle headr;
@@ -222,21 +224,46 @@ pagerresize(Rectangle r)
 }
 
 void
-partclick(Point p)
+savepart(Message *m)
 {
-	Message *m;
+	char name[255] = {0}, iname[255] = {0}, buf[1024] = {0};
+	int ifd, fd, n;
+
+	snprint(name, sizeof name, "%s", m->filename);
+	n = kbdenter("Save as:", name, sizeof name, mc, kc, nil);
+	if(n <= 0)
+		return;
+	fd = create(name, OWRITE, 0644);
+	if(fd < 0){
+		fprint(2, "unable to save part as '%s': %r", name); /* FIXME */
+		return;
+	}
+	snprint(iname, sizeof iname, "%s/body", m->path);
+	ifd = open(iname, OREAD);
+	if(ifd < 0){
+		close(fd);
+		fprint(2, "unable to open part file '%s': %r", iname); /* FIXME */
+		return;
+	}
+	for(;;){
+		n = read(ifd, buf, sizeof buf);
+		if(n <= 0)
+			break;
+		write(fd, buf, n);
+	}
+	close(ifd);
+	close(fd);
+}
+
+void
+plumbpart(Message *m)
+{
 	char buf[1024] = {0};
 	int fd, n;
 
 	fd = plumbopen("send", OWRITE);
 	if(fd < 0)
 		return;
-	n = (p.y - partsr.min.y) / (font->height+Padding);
-	if(n < 0 || n >= nparts){
-		close(fd);
-		return;
-	}
-	m = parts[n];
 	for(n = 0; n < nelem(handlers); n++){
 		if(strcmp(m->type, handlers[n].type) == 0){
 			snprint(buf, sizeof buf, handlers[n].fmt, m->path);
@@ -251,12 +278,37 @@ partclick(Point p)
 }
 
 void
+partclick(Mouse m)
+{
+	enum { Mpsave, Mpplumb };
+	char *menustr[] = { "save", "plumb", nil };
+	Menu menu = { menustr };
+	int n, i;
+
+	n = (m.xy.y - partsr.min.y) / (font->height+Padding);
+	if(n < 0 || n >= nparts)
+		return;
+	if(m.buttons == 2){
+		i = menuhit(2, mc, &menu, nil);
+		switch(i){
+			case Mpsave:
+				savepart(parts[n]);
+				break;
+			case Mpplumb:
+				plumbpart(parts[n]);
+				break;
+		}
+	}else if(m.buttons == 4)
+		plumbpart(parts[n]);
+}
+
+void
 pagermouse(Mouse m)
 {
 	if(!ptinrect(m.xy, viewr))
 		return;
-	if(nparts > 0 && ptinrect(m.xy, partsr) && m.buttons == 4)
-		partclick(m.xy);
+	if(nparts > 0 && ptinrect(m.xy, partsr))
+		partclick(m);
 	else if(ptinrect(m.xy, textr)){
 		if(m.buttons == 4)
 			mesgmenuhit(3, m);
@@ -272,11 +324,12 @@ pagerkey(Rune k)
 }
 
 void
-pagerinit(Mousectl *mctl, Theme *theme)
+pagerinit(Mousectl *mctl, Kbdctl *kctl, Theme *theme)
 {
 	Rectangle r;
 
 	mc = mctl;
+	kc = kctl;
 	tz = tzload("local");
 	showcc = 0;
 	nparts = 0;
