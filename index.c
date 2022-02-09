@@ -29,12 +29,14 @@ enum
 
 enum
 {
+	Mraw,
 	Mplumb,
 	Mdelete,
 };
 
 char *menustr[] =
 {
+	"raw",
 	"plumb",
 	"delete",
 	nil
@@ -310,6 +312,20 @@ plumbmsg(Message *m)
 	close(fd);	
 }
 
+static
+void
+rawmsg(Message *m)
+{
+	char buf[1024] = {0};
+
+	if(rfork(RFPROC|RFNOWAIT|RFFDG|RFREND) == 0){
+		snprint(buf, sizeof buf, "window -noscroll -dx 800 -dy 1000 'cat %s/rawunix; read'", m->path);
+		execl("/bin/rc", "rc", "-c", buf, 0);
+		fprint(2, "execl failed: %r");
+		threadexitsall("execl");
+	}
+}
+
 void
 mesgmenuhit(int but, Mouse m)
 {
@@ -317,6 +333,10 @@ mesgmenuhit(int but, Mouse m)
 
 	n = menuhit(but, mctl, &menu, nil);
 	switch(n){
+	case Mraw:
+		select(indexat(m.xy), selc);
+		rawmsg(messageat(sel));
+		break;
 	case Mplumb:
 		select(indexat(m.xy), selc);
 		plumbmsg(messageat(sel));
