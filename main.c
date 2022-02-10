@@ -98,7 +98,8 @@ void
 mouse(Mouse m)
 {
 	indexmouse(m);
-	pagermouse(m);
+	if(collapsed)
+		pagermouse(m);
 }
 
 void
