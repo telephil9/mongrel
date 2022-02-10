@@ -71,7 +71,7 @@ void
 indexadded(int index)
 {
 	index = mbox->count - index - 1;
-	if(sel <= index)
+	if(sel >= index)
 		++sel;
 }
 
