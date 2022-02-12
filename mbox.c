@@ -186,19 +186,27 @@ dircmp(Dir *a, Dir *b)
 }
 
 Mailbox*
-loadmbox(char *name)
+mboxinit(char *name)
 {
 	Mailbox *mb;
-	Dir *d;
-	int n, fd, i;
-	char buf[256];
-	Message *m;
 
 	mb = mallocz(sizeof(Mailbox), 1);
 	if(mb==nil)
 		sysfatal("malloc: %r");
 	mb->name = strdup(name);
 	mb->path = smprint("/mail/fs/%s", name);
+	mb->loaded = 0;
+	return mb;
+}
+
+void
+mboxload(Mailbox *mb)
+{
+	Dir *d;
+	int n, fd, i;
+	char buf[256];
+	Message *m;
+
 	fd = open(mb->path, OREAD);
 	if(fd<0)
 		sysfatal("open: %r");
@@ -218,7 +226,7 @@ loadmbox(char *name)
 		++mb->count;
 	}
 	free(d);
-	return mb;
+	mb->loaded = 1;
 }
 
 int

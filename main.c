@@ -40,6 +40,8 @@ Channel *selc;
 Channel *eventc;
 Mailbox *mboxes[16];
 int nmboxes;
+char *mbmenustr[16] = {0};
+Menu mbmenu = { mbmenustr };
 Mailbox *mbox;
 static Image *cols[NCOLS];
 Rectangle headr;
@@ -95,8 +97,29 @@ resize(void)
 }
 
 void
+switchmbox(int n)
+{
+	if(mbox==mboxes[n])
+		return;
+	mbox = mboxes[n];
+	if(!mbox->loaded)
+		mboxload(mbox);
+	indexswitch(mbox);
+	collapsed = 0;
+	resize();
+}
+
+void
 mouse(Mouse m)
 {
+	int n;
+
+	if(ptinrect(m.xy, headr) && m.buttons==4){
+		n = menuhit(3, mctl, &mbmenu, nil);
+		if(n >= 0)
+			switchmbox(n);
+		return;
+	}
 	indexmouse(m);
 	if(collapsed)
 		pagermouse(m);
@@ -187,15 +210,6 @@ init(Channel *selc)
 }
 
 void
-switchmbox(int n)
-{
-	if(mbox==mboxes[n])
-		return;
-	mbox = mboxes[n];
-	indexswitch(mbox);
-}
-
-void
 plumbmsg(Message *m)
 {
 	int fd;
@@ -258,7 +272,9 @@ threadmain(int argc, char *argv[])
 	ARGBEGIN{
 	case 'm':
 		s = EARGF(usage());
-		mboxes[nmboxes++] = loadmbox(s);
+		mboxes[nmboxes] = mboxinit(s);
+		mbmenustr[nmboxes] = mboxes[nmboxes]->name;
+		nmboxes++;
 		break;
 	default:
 		fprint(2, "unknown flag '%c'\n", ARGC());

@@ -8,6 +8,7 @@ struct Mailbox
 	Lock;
 	char	*name;
 	char	*path;
+	int		loaded;
 	int		count;
 	int		unseen;
 	Mlist*	list;
@@ -63,7 +64,8 @@ enum
 	Emodify,
 };
 
-Mailbox* loadmbox(char *name);
+Mailbox* mboxinit(char *name);
+void mboxload(Mailbox*);
 void mesgloadbody(Message*);
 int mesgmarkseen(Mailbox*, Message*);
 int mboxadd(Mailbox *mbox, char *path);

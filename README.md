@@ -11,6 +11,7 @@ If available, mongrel will use your current [theme](https://ftrv.se/14).
 % mk install
 % mongrel -m mbox
 ```
+**NOTE:** you can pass multiple -m parameters to load multiple mailboxes.
 
 ## Usage
 mongrel has two components:
@@ -22,6 +23,8 @@ In the index, navigation is done using either the scrollbar or the mouse wheel. 
 - delete deletes the message
 
 In the pager, navigation is done using either the scrollbar or the mouse wheel. It is also possible to use keyboard navigation by pressing `Alt` in addition to the arrow keys, page up, page down, home and end.
+
+Right-clicking in the header bar (the one displaying the current mailbox name) will show a menu allowing to switch between mailboxes.
 
 Other shortcuts:
 - `q` will hide the pager if it is open or quit mongrel if in the index.  
