@@ -257,6 +257,8 @@ init(Channel *selc)
 		cols[BACK] = allocimage(display, r, screen->chan, 1, 0xFFFFFFFF);
 		cols[TEXT] = allocimage(display, r, screen->chan, 1, 0x000000FF);
 		cols[BORD] = allocimage(display, r, screen->chan, 1, DGreygreen);
+		cols[PBRD] = allocimage(display, r, screen->chan, 1, 0x88CC88FF);
+		cols[PBCK] = allocimage(display, r, screen->chan, 1, 0xEAFFEAFF);
 		/*
 		cols[BACK] = allocimage(display, r, screen->chan, 1, 0x282828FF);
 		cols[TEXT] = allocimage(display, r, screen->chan, 1, 0xA89984FF);
