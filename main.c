@@ -30,6 +30,8 @@ enum
 	BACK,
 	TEXT,
 	BORD,
+	PBRD,
+	PBCK,
 	NCOLS,
 };
 
@@ -38,6 +40,7 @@ Kbdctl *kctl;
 Channel *showc;
 Channel *selc;
 Channel *eventc;
+Channel *loadc;
 Mailbox *mboxes[16];
 int nmboxes;
 char *mbmenustr[16] = {0};
@@ -97,13 +100,66 @@ resize(void)
 }
 
 void
+loadproc(void *v)
+{
+	Channel *c;
+
+	c = v;
+	mboxload(mbox, c);
+}
+
+void
+drawprogress(Rectangle r, Rectangle pr)
+{
+	draw(screen, pr, cols[PBCK], nil, ZP);
+	border(screen, r, 2, cols[PBRD], ZP);	
+	flushimage(display, 1);
+}
+
+void
+loadmbox(void)
+{
+	ulong total, count, n;
+	Point sp, p;
+	Rectangle r, pr;
+	int pc;
+	char buf[255] = {0};
+
+	draw(screen, screen->r, cols[BACK], nil, ZP);
+	p.x = (Dx(screen->r)-200)/2;
+	p.y = (Dy(screen->r)-25)/2;
+	r = rectaddpt(rectaddpt(Rect(0, 0, 200, 25), p), screen->r.min);
+	snprint(buf, sizeof buf, "Loading %s...", mbox->name);
+	sp.x = (Dx(screen->r)-stringwidth(font, buf))/2;
+	sp.y = r.min.y - font->height - 12 - screen->r.min.y;
+	string(screen, addpt(screen->r.min, sp), cols[TEXT], ZP, font, buf);
+	replclipr(screen, 1, insetrect(r, -2));
+	loadc = chancreate(sizeof(ulong), 1);
+	proccreate(loadproc, loadc, 8192);
+	total = recvul(loadc);
+	count = 0;
+	for(;;){
+		n = recvul(loadc);
+		if(n == 0)
+			break;
+		count += 1;
+		pc = 200*((double)count/total);
+		pr = rectaddpt(rectaddpt(Rect(0, 0, pc, 25), p), screen->r.min);
+		if(count % (total/100) == 0)
+			drawprogress(r, pr);
+	}
+	chanfree(loadc);
+	replclipr(screen, 1, screen->r);
+}
+
+void
 switchmbox(int n)
 {
 	if(mbox==mboxes[n])
 		return;
 	mbox = mboxes[n];
 	if(!mbox->loaded)
-		mboxload(mbox);
+		loadmbox();
 	indexswitch(mbox);
 	collapsed = 0;
 	resize();
@@ -194,6 +250,8 @@ init(Channel *selc)
 		cols[BACK] = theme->back;
 		cols[TEXT] = theme->text;
 		cols[BORD] = theme->title;
+		cols[PBRD] = theme->menubord;
+		cols[PBCK] = theme->menuback;
 	}else{
 		r = Rect(0, 0, 1, 1);
 		cols[BACK] = allocimage(display, r, screen->chan, 1, 0xFFFFFFFF);

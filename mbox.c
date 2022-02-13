@@ -200,7 +200,7 @@ mboxinit(char *name)
 }
 
 void
-mboxload(Mailbox *mb)
+mboxload(Mailbox *mb, Channel *c)
 {
 	Dir *d;
 	int n, fd, i;
@@ -214,6 +214,7 @@ mboxload(Mailbox *mb)
 	close(fd);
 	qsort(d, n, sizeof *d, (int(*)(void*,void*))dircmp);
 	mb->list = mkmlist(n*1.5);
+	sendul(c, n-1); /* don't count ctl file */
 	for(i = 1; i < n; i++){
 		snprint(buf, sizeof buf, "%s/%s", mb->path, d[i].name);
 		if((d[i].qid.type & QTDIR)==0)
@@ -224,9 +225,11 @@ mboxload(Mailbox *mb)
 		if((m->flags & Fseen) == 0)
 			++mb->unseen;
 		++mb->count;
+		sendul(c, 1);
 	}
 	free(d);
 	mb->loaded = 1;
+	sendul(c, 0);
 }
 
 int

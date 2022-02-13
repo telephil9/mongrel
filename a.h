@@ -65,7 +65,7 @@ enum
 };
 
 Mailbox* mboxinit(char *name);
-void mboxload(Mailbox*);
+void mboxload(Mailbox*, Channel *c);
 void mesgloadbody(Message*);
 int mesgmarkseen(Mailbox*, Message*);
 int mboxadd(Mailbox *mbox, char *path);
