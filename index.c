@@ -334,15 +334,18 @@ mesgmenuhit(int but, Mouse m)
 	n = menuhit(but, mctl, &menu, nil);
 	switch(n){
 	case Mraw:
-		select(indexat(m.xy), selc);
+		if(ptinrect(m.xy, listr))
+			select(indexat(m.xy), selc);
 		rawmsg(messageat(sel));
 		break;
 	case Mplumb:
-		select(indexat(m.xy), selc);
+		if(ptinrect(m.xy, listr))
+			select(indexat(m.xy), selc);
 		plumbmsg(messageat(sel));
 		break;
 	case Mdelete:
-		select(indexat(m.xy), selc);
+		if(ptinrect(m.xy, listr))
+			select(indexat(m.xy), selc);
 		mesgdel(mbox, messageat(sel));
 		break;
 	}
