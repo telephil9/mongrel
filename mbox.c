@@ -114,6 +114,7 @@ loadmessage(char *path)
 	m->date = f[4];
 	m->subject = f[5];
 	m->type = f[6];
+	m->disposition = f[7];
 	m->filename = f[8];
 	if(n > 17)
 		m->flags = parseflags(f[17]);

@@ -82,7 +82,7 @@ collectparts(Message *m)
 		if(strncmp(p->type, "multipart/", 10) == 0)
 			collectparts(p);
 		else{
-			if(strcmp(p->type, "text/plain") == 0)
+			if(strcmp(p->type, "text/plain") == 0 && strncmp(p->disposition, "file", 4) != 0)
 				continue;
 			parts[nparts++] = p;
 		}

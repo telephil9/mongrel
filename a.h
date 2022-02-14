@@ -28,6 +28,7 @@ struct Message
 	long time;
 	int flags;
 	char *type;
+	char *disposition;
 	char *filename;
 	char *body;
 	Mlist *parts;
