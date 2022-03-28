@@ -19,10 +19,13 @@ struct Highlight
 };
 
 Highlight hilights[] = {
+	/* diff */
 	{ "^--- a.*$", 0x458588ff, nil },
 	{ "^\\+\\+\\+ b.*$", 0x458588ff, nil },
-	{ "^-.+$",   0xcc241dFF, nil },
+	{ "^-[^\\-]+$",   0xcc241dFF, nil },
 	{ "^\\+.*$", 0x98971AFF, nil },
+	/* quote */
+	//{ "^>.*$", 0x928374FF, nil },
 };
 
 enum
@@ -57,25 +60,34 @@ findhilight(char *s)
 void
 computelines(Text *t)
 {
-	int i, x, w, l, c, n;
+	int i, x, w, l, c, n, wrap;
 	Rune r;
 	char buf[4096] = {0};
+	Image *h;
 
 	t->lines[0] = 0;
 	t->nlines = 1;
 	w = Dx(t->textr);
 	x = 0;
+	wrap = 0;
+	h = nil;
 	for(i = 0; i < t->ndata; ){
 		c = chartorune(&r, &t->data[i]);
 		if(r == '\n'){
 			if(i + c == t->ndata)
 				break;
 			n = i + c - t->lines[t->nlines - 1];
-			strncpy(buf, t->data + t->lines[t->nlines - 1], n);
-			buf[n] = 0;
-			t->high[t->nlines - 1] = findhilight(buf);
+			if(wrap)
+					t->high[t->nlines - 1] = h;
+			else{
+				strncpy(buf, t->data + t->lines[t->nlines - 1], n);
+				buf[n] = 0;
+				t->high[t->nlines - 1] = findhilight(buf);
+			}
 			t->lines[t->nlines++] = i + c;
 			x = 0;
+			wrap = 0;
+			h = nil;
 		}else{
 			l = 0;
 			if(r == '\t'){
@@ -85,8 +97,14 @@ computelines(Text *t)
 				x += l;
 			}
 			if(x > w){
+				n = i - t->lines[t->nlines - 1];
+				strncpy(buf, t->data + t->lines[t->nlines - 1], n);
+				buf[n] = 0;
+				h = findhilight(buf);
+				t->high[t->nlines - 1] = h;
 				t->lines[t->nlines++] = i;
 				x = l;
+				wrap = 1;
 			}
 		}
 		i += c;
