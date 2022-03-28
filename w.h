@@ -28,6 +28,7 @@ struct Text
 	char *data;
 	usize ndata;
 	usize lines[Maxlines];
+	Image *high[Maxlines];
 	int nlines;
 	int s0;
 	int s1;

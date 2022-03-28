@@ -5,7 +5,25 @@
 #include <keyboard.h>
 #include <thread.h>
 #include <plumb.h>
+#include <regexp.h>
 #include "w.h"
+
+typedef struct Highlight Highlight;
+
+struct Highlight
+{
+	char *pattern;
+	ulong color;
+	Reprog *re;
+	Image *i;
+};
+
+Highlight hilights[] = {
+	{ "^--- a.*$", 0x458588ff, nil },
+	{ "^\\+\\+\\+ b.*$", 0x458588ff, nil },
+	{ "^-.+$",   0xcc241dFF, nil },
+	{ "^\\+.*$", 0x98971AFF, nil },
+};
 
 enum
 {
@@ -25,11 +43,23 @@ char *menu2str[] = {
 };
 Menu menu2 = { menu2str };
 
+Image*
+findhilight(char *s)
+{
+	int i;
+
+	for(i = 0; i < nelem(hilights); i++)
+		if(regexec(hilights[i].re, s, nil, 0))
+			return hilights[i].i;
+	return nil;
+}
+
 void
 computelines(Text *t)
 {
-	int i, x, w, l, c;
+	int i, x, w, l, c, n;
 	Rune r;
+	char buf[4096] = {0};
 
 	t->lines[0] = 0;
 	t->nlines = 1;
@@ -40,6 +70,10 @@ computelines(Text *t)
 		if(r == '\n'){
 			if(i + c == t->ndata)
 				break;
+			n = i + c - t->lines[t->nlines - 1];
+			strncpy(buf, t->data + t->lines[t->nlines - 1], n);
+			buf[n] = 0;
+			t->high[t->nlines - 1] = findhilight(buf);
 			t->lines[t->nlines++] = i + c;
 			x = 0;
 		}else{
@@ -94,6 +128,8 @@ indexat(Text *t, Point p)
 void
 textinit(Text *t, Image *b, Rectangle r, Font *f, Image *cols[NCOLS])
 {
+	int i;
+
 	memset(t, 0, sizeof *t);
 	t->b = b;
 	t->font = f;
@@ -102,6 +138,10 @@ textinit(Text *t, Image *b, Rectangle r, Font *f, Image *cols[NCOLS])
 	t->offset = 0;
 	textresize(t, r);
 	memmove(t->cols, cols, sizeof t->cols);
+	for(i = 0; i < nelem(hilights); i++){
+		hilights[i].re = regcomp(hilights[i].pattern);
+		hilights[i].i  = allocimage(display, Rect(0, 0, 1, 1), screen->chan, 1, hilights[i].color);
+	}
 }
 
 void
@@ -142,7 +182,7 @@ selected(Text *t, int index)
 void
 drawline(Text *t, int index)
 {
-	int i, s, e;
+	int i, s, e, sel;
 	Point p;
 	Rune r;
 	Image *fg, *bg;
@@ -154,8 +194,11 @@ drawline(Text *t, int index)
 		e = t->lines[t->offset+index+1];
 	p = addpt(t->textr.min, Pt(0, index*font->height));
 	for(i = s; i < e; ){
-		fg = selected(t, i) ? t->cols[HTEXT] : t->cols[TEXT];
-		bg = selected(t, i) ? t->cols[HIGH]  : t->cols[BACK];
+		sel = selected(t, i);
+		fg = sel ? t->cols[HTEXT] : t->cols[TEXT];
+		bg = sel ? t->cols[HIGH]  : t->cols[BACK];
+		if(!sel && t->high[t->offset+index] != nil)
+			fg = t->high[t->offset+index];
 		i += chartorune(&r, &t->data[i]);
 		if(r == '\n')
 			if(s + 1 == e) /* empty line */
