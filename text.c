@@ -25,7 +25,7 @@ Highlight hilights[] = {
 	{ "^-[^\\-]+$",   0xcc241dFF, nil },
 	{ "^\\+.*$", 0x98971AFF, nil },
 	/* quote */
-	//{ "^>.*$", 0x928374FF, nil },
+	{ "^>.*$", 0x928374FF, nil },
 };
 
 enum
@@ -60,7 +60,7 @@ findhilight(char *s)
 void
 computelines(Text *t)
 {
-	int i, x, w, l, c, n, wrap;
+	int i, x, w, l, c, n, s, wrap;
 	Rune r;
 	char buf[4096] = {0};
 	Image *h;
@@ -69,6 +69,7 @@ computelines(Text *t)
 	t->nlines = 1;
 	w = Dx(t->textr);
 	x = 0;
+	s = 0;
 	wrap = 0;
 	h = nil;
 	for(i = 0; i < t->ndata; ){
@@ -95,8 +96,11 @@ computelines(Text *t)
 			}else{
 				l = runestringnwidth(t->font, &r, 1);
 				x += l;
+				if(r == ' ')
+					s = i + 1;
 			}
 			if(x > w){
+				i = s;
 				n = i - t->lines[t->nlines - 1];
 				strncpy(buf, t->data + t->lines[t->nlines - 1], n);
 				buf[n] = 0;
