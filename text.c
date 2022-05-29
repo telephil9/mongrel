@@ -22,7 +22,7 @@ Highlight hilights[] = {
 	/* diff */
 	{ "^--- a.*$", 0x458588ff, nil },
 	{ "^\\+\\+\\+ b.*$", 0x458588ff, nil },
-	{ "^-[^\\-]+$",   0xcc241dFF, nil },
+	{ "^-[^\\-].*$",   0xcc241dFF, nil },
 	{ "^\\+.*$", 0x98971AFF, nil },
 	/* quote */
 	{ "^>.*$", 0x928374FF, nil },
@@ -47,22 +47,30 @@ char *menu2str[] = {
 Menu menu2 = { menu2str };
 
 Image*
-findhilight(char *s)
+findhilight(Text *t, int e)
 {
+	Image *h;
+	char c, *s;
 	int i;
 
+	h = nil;
+	s = t->data + t->lines[t->nlines - 1];
+	c = t->data[e];
+	t->data[e] = 0;
 	for(i = 0; i < nelem(hilights); i++)
-		if(regexec(hilights[i].re, s, nil, 0))
-			return hilights[i].i;
-	return nil;
+		if(regexec(hilights[i].re, s, nil, 0)){
+			h = hilights[i].i;
+			break;
+		}
+	t->data[e] = c;
+	return h;
 }
 
 void
 computelines(Text *t)
 {
-	int i, x, w, l, c, n, s, wrap;
+	int i, x, w, l, c, s, wrap;
 	Rune r;
-	char buf[4096] = {0};
 	Image *h;
 
 	t->lines[0] = 0;
@@ -75,16 +83,14 @@ computelines(Text *t)
 	for(i = 0; i < t->ndata; ){
 		c = chartorune(&r, &t->data[i]);
 		if(r == '\n'){
-			if(i + c == t->ndata)
+			if(i + c == t->ndata){
+				t->high[t->nlines - 1] = findhilight(t, i+c);
 				break;
-			n = i + c - t->lines[t->nlines - 1];
-			if(wrap)
-					t->high[t->nlines - 1] = h;
-			else{
-				strncpy(buf, t->data + t->lines[t->nlines - 1], n);
-				buf[n] = 0;
-				t->high[t->nlines - 1] = findhilight(buf);
 			}
+			if(wrap)
+				t->high[t->nlines - 1] = h;
+			else
+				t->high[t->nlines - 1] = findhilight(t, i+c);
 			t->lines[t->nlines++] = i + c;
 			x = 0;
 			wrap = 0;
@@ -101,10 +107,7 @@ computelines(Text *t)
 			}
 			if(x > w){
 				i = s;
-				n = i - t->lines[t->nlines - 1];
-				strncpy(buf, t->data + t->lines[t->nlines - 1], n);
-				buf[n] = 0;
-				h = findhilight(buf);
+				h = findhilight(t, i);
 				t->high[t->nlines - 1] = h;
 				t->lines[t->nlines++] = i;
 				x = l;
@@ -174,6 +177,7 @@ textset(Text *t, char *data, usize ndata)
 	t->offset = 0;
 	t->data = data;
 	t->ndata = ndata;
+	memset(t->high, 0, Maxlines*sizeof(Image*));
 	computelines(t);
 }
 
