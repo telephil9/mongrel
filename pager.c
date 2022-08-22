@@ -309,12 +309,8 @@ pagermouse(Mouse m)
 		return;
 	if(nparts > 0 && ptinrect(m.xy, partsr))
 		partclick(m);
-	else if(ptinrect(m.xy, textr)){
-		if(m.buttons == 4)
-			mesgmenuhit(3, m);
-		else
-			textmouse(&text, mc);
-	}
+	else if(ptinrect(m.xy, textr))
+		textmouse(&text, mc);
 }
 
 void

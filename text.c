@@ -8,6 +8,8 @@
 #include <regexp.h>
 #include "w.h"
 
+extern void mesgmenuhit(int, Mouse);
+
 typedef struct Highlight Highlight;
 
 struct Highlight
@@ -410,6 +412,8 @@ textmouse(Text *t, Mousectl *mc)
 			}
 		}else if(mc->buttons == 2){
 			menu2hit(t, mc);
+		}else if(mc->buttons == 4){
+			mesgmenuhit(3, *mc);
 		}else if(mc->buttons == 8){
 			n = mousescrollsize(t->vlines);
 			scroll(t, -n);
