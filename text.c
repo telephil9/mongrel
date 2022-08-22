@@ -79,10 +79,10 @@ computelines(Text *t)
 	t->nlines = 1;
 	w = Dx(t->textr);
 	x = 0;
-	s = 0;
 	wrap = 0;
 	h = nil;
 	for(i = 0; i < t->ndata; ){
+		s = i;
 		c = chartorune(&r, &t->data[i]);
 		if(r == '\n'){
 			if(i + c == t->ndata){
